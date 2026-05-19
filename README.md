@@ -148,6 +148,28 @@ Open the Vercel app, run a comparison, then chat.
 - **Slow ingest:** free instances are small; first ingest may take several minutes.
 - **Timeouts:** very long videos may hit request limits; keep clips under 30 min (`MAX_VIDEO_DURATION_SEC`).
 
+### YouTube “Sign in to confirm you’re not a bot” on Render
+
+YouTube often blocks **datacenter IPs** (Render, Fly, etc.). Fix:
+
+1. On your Mac, install a browser extension such as **“Get cookies.txt LOCALLY”** (Chrome/Firefox).
+2. While logged into YouTube in that browser, export cookies for `youtube.com` → `cookies.txt` (Netscape format).
+3. Base64-encode the file:
+
+   ```bash
+   base64 -i cookies.txt | tr -d '\n' | pbcopy
+   ```
+
+4. In Render → your service → **Environment** → add:
+
+   ```env
+   YTDLP_COOKIES_B64=<paste base64 string>
+   ```
+
+5. **Manual Deploy** (or push a commit) to restart with the new env.
+
+Without cookies, the app falls back to **oEmbed + transcript API** (titles work; views/likes may be missing). Cookies restore full yt-dlp metadata and are more reliable for captions.
+
 ## Loom script
 
 1. Paste YouTube + TikTok URLs → ingest

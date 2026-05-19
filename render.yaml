@@ -12,6 +12,8 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: YTDLP_COOKIES_B64
+        sync: false
       - key: OPENAI_CHAT_MODEL
         value: gpt-4o-mini
       - key: OPENAI_EMBEDDING_MODEL

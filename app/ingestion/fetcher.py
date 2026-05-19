@@ -7,26 +7,60 @@ import yt_dlp
 from app.ingestion.detector import detect_platform, extract_youtube_id
 from app.ingestion.ytdlp_opts import metadata_opts
 from app.ingestion.youtube_transcript import fetch_youtube_transcript
+from app.ingestion.youtube_oembed import fetch_youtube_metadata_oembed
 from app.ingestion.ytdlp_meta import (
     download_subtitles_vtt,
     fetch_metadata,
     subtitles_to_segments,
     _parse_vtt,
 )
+from app.config import settings
 from app.models import Platform, TranscriptSegment, VideoDocument
 
 logger = logging.getLogger(__name__)
 
 
+def _is_youtube_bot_block(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return "sign in to confirm" in msg or "not a bot" in msg or "cookies" in msg
+
+
+def _fetch_metadata_with_fallback(url: str, platform: Platform) -> dict:
+    try:
+        return fetch_metadata(url, platform)
+    except Exception as e:
+        if platform not in ("youtube", "youtube_shorts") or not _is_youtube_bot_block(e):
+            raise
+        logger.warning("yt-dlp blocked on YouTube, using oEmbed metadata: %s", e)
+        return fetch_youtube_metadata_oembed(url)
+
+
 def fetch_video_document(url: str) -> VideoDocument:
     platform = detect_platform(url)
-    meta = fetch_metadata(url, platform)
+    meta = _fetch_metadata_with_fallback(url, platform)
     segments = _fetch_transcript(url, platform, meta)
 
+    if meta.get("duration_sec", 0) <= 0 and segments:
+        meta["duration_sec"] = max(s.end_sec for s in segments)
+
+    if meta["duration_sec"] > settings.max_video_duration_sec:
+        mins = int(meta["duration_sec"] // 60)
+        cap = int(settings.max_video_duration_sec // 60)
+        raise ValueError(
+            f"Video is {mins} min; max allowed is {cap} min "
+            f"(MAX_VIDEO_DURATION_SEC={settings.max_video_duration_sec})."
+        )
+
     if not segments:
+        hint = ""
+        if platform in ("youtube", "youtube_shorts"):
+            hint = (
+                " On cloud hosts (Render), set YTDLP_COOKIES_B64 in env — see README."
+            )
         raise ValueError(
             "No transcript available for this video. "
             "Try a video with captions enabled, or a different platform URL."
+            + hint
         )
 
     return VideoDocument(
