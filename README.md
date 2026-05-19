@@ -89,14 +89,64 @@ Assumptions: 2 videos, 40 chunks each, 10 chat turns/session.
 
 **Knobs**: cache by URL hash, cap video length (15 min), `top_k=12`, skip Whisper unless needed.
 
-## Deploy (Render)
+## Deploy on Render (free tier)
 
-1. Push repo to GitHub.
-2. [Render](https://render.com) → New **Web Service** → Docker.
-3. Set env: `DATABASE_URL`, `OPENAI_API_KEY`, `CORS_ORIGINS=https://your-vercel-app.vercel.app`.
-4. Health check path: `/health`.
+### Prerequisites
 
-Cold starts on free tier: wake service before demo.
+- Repo pushed to GitHub
+- Supabase schema applied (`python scripts/apply_schema.py` or SQL Editor)
+- Vercel frontend URL ready
+
+### Option A — Blueprint (`render.yaml`)
+
+1. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → connect this repo.
+2. Set secrets when prompted:
+   - `DATABASE_URL` — Supabase **Session pooler** URI (port `5432`)
+   - `OPENAI_API_KEY`
+   - `CORS_ORIGINS` — comma-separated, e.g.  
+     `https://compare-video.vercel.app,http://localhost:3000`
+3. Deploy. Note the service URL: `https://creatorjoy-rag-api.onrender.com` (name may vary).
+
+### Option B — Manual web service
+
+1. **New → Web Service** → connect GitHub repo.
+2. **Runtime:** Docker (uses root `Dockerfile`).
+3. **Plan:** Free.
+4. **Health check path:** `/health`.
+5. **Environment variables** (same as `.env.example`):
+
+   | Key | Example |
+   |-----|---------|
+   | `DATABASE_URL` | `postgresql://postgres.xxx:...@...pooler.supabase.com:5432/postgres` |
+   | `OPENAI_API_KEY` | `sk-...` |
+   | `CORS_ORIGINS` | `https://your-app.vercel.app,http://localhost:3000` |
+
+6. Create Web Service → wait for build (first Docker build ~5–10 min).
+
+### Wire Vercel
+
+In the frontend project (Vercel → Settings → Environment Variables):
+
+```env
+NEXT_PUBLIC_API_URL=https://YOUR-SERVICE.onrender.com
+```
+
+Redeploy Vercel after changing this.
+
+### Verify
+
+```bash
+curl https://YOUR-SERVICE.onrender.com/health
+# {"status":"ok"}
+```
+
+Open the Vercel app, run a comparison, then chat.
+
+### Free-tier caveats
+
+- **Cold start:** service sleeps after ~15 min idle; open `/health` before a demo.
+- **Slow ingest:** free instances are small; first ingest may take several minutes.
+- **Timeouts:** very long videos may hit request limits; keep clips under 30 min (`MAX_VIDEO_DURATION_SEC`).
 
 ## Loom script
 
