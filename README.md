@@ -170,6 +170,10 @@ YouTube often blocks **datacenter IPs** (Render, Fly, etc.). Fix:
 
 Without cookies, the app falls back to **oEmbed + transcript API** (titles work; views/likes may be missing). Cookies restore full yt-dlp metadata and are more reliable for captions.
 
+**Geo-restricted videos:** Some videos play in your browser (India, etc.) but **cannot be ingested from Render’s US/EU servers**. The UI will say “geo-restricted” — pick a globally public video for demos.
+
+**Verify cookies on Render:** Check deploy logs for `YouTube cookies loaded for yt-dlp`. If you see `No YouTube cookies`, fix `YTDLP_COOKIES_B64` (no line breaks in the value).
+
 ## Loom script
 
 1. Paste YouTube + TikTok URLs → ingest

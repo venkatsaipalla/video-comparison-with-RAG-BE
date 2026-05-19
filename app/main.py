@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db.pool import close_pool, get_pool
+from app.ingestion.ytdlp_cookies import ensure_cookiefile
 from app.routes import chat, health, sessions
 
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +26,12 @@ async def lifespan(app: FastAPI):
         db.username,
     )
     await get_pool()
+    if ensure_cookiefile():
+        logger.info("YouTube cookies loaded for yt-dlp")
+    else:
+        logger.warning(
+            "No YouTube cookies (YTDLP_COOKIES_B64) — ingest may fail on cloud IPs"
+        )
     yield
     await close_pool()
 

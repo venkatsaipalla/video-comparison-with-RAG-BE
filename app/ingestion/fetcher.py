@@ -15,6 +15,7 @@ from app.ingestion.ytdlp_meta import (
     _parse_vtt,
 )
 from app.config import settings
+from app.ingestion.errors import classify_youtube_failure
 from app.models import Platform, TranscriptSegment, VideoDocument
 
 logger = logging.getLogger(__name__)
@@ -22,14 +23,31 @@ logger = logging.getLogger(__name__)
 
 def _is_youtube_bot_block(exc: BaseException) -> bool:
     msg = str(exc).lower()
-    return "sign in to confirm" in msg or "not a bot" in msg or "cookies" in msg
+    return "sign in to confirm" in msg or "not a bot" in msg
+
+
+def _is_youtube_geo_block(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return any(
+        m in msg
+        for m in (
+            "not available in your country",
+            "not made this video available",
+            "geo restricted",
+            "blocked it in your country",
+        )
+    )
 
 
 def _fetch_metadata_with_fallback(url: str, platform: Platform) -> dict:
     try:
         return fetch_metadata(url, platform)
     except Exception as e:
-        if platform not in ("youtube", "youtube_shorts") or not _is_youtube_bot_block(e):
+        if platform not in ("youtube", "youtube_shorts"):
+            raise
+        if _is_youtube_geo_block(e):
+            raise ValueError(classify_youtube_failure([str(e)])) from e
+        if not _is_youtube_bot_block(e):
             raise
         logger.warning("yt-dlp blocked on YouTube, using oEmbed metadata: %s", e)
         return fetch_youtube_metadata_oembed(url)
@@ -38,7 +56,7 @@ def _fetch_metadata_with_fallback(url: str, platform: Platform) -> dict:
 def fetch_video_document(url: str) -> VideoDocument:
     platform = detect_platform(url)
     meta = _fetch_metadata_with_fallback(url, platform)
-    segments = _fetch_transcript(url, platform, meta)
+    segments, transcript_errors = _fetch_transcript(url, platform, meta)
 
     if meta.get("duration_sec", 0) <= 0 and segments:
         meta["duration_sec"] = max(s.end_sec for s in segments)
@@ -52,15 +70,8 @@ def fetch_video_document(url: str) -> VideoDocument:
         )
 
     if not segments:
-        hint = ""
-        if platform in ("youtube", "youtube_shorts"):
-            hint = (
-                " On cloud hosts (Render), set YTDLP_COOKIES_B64 in env — see README."
-            )
         raise ValueError(
-            "No transcript available for this video. "
-            "Try a video with captions enabled, or a different platform URL."
-            + hint
+            _transcript_failure_message(url, platform, transcript_errors)
         )
 
     return VideoDocument(
@@ -81,46 +92,63 @@ def fetch_video_document(url: str) -> VideoDocument:
     )
 
 
+def _transcript_failure_message(
+    url: str, platform: Platform, errors: list[str]
+) -> str:
+    if platform in ("youtube", "youtube_shorts"):
+        return classify_youtube_failure(errors)
+    return (
+        "No transcript available for this video. "
+        "Try a URL with captions enabled or a different platform."
+    )
+
+
 def _fetch_transcript(
     url: str, platform: Platform, meta: dict
-) -> list[TranscriptSegment]:
-    if platform in ("youtube", "youtube_shorts"):
-        try:
-            return fetch_youtube_transcript(url)
-        except Exception as e:
-            logger.warning("youtube-transcript-api failed for %s: %s", url, e)
+) -> tuple[list[TranscriptSegment], list[str]]:
+    errors: list[str] = []
+    is_youtube = platform in ("youtube", "youtube_shorts")
+    langs = ["hi", "en", "en-US", "en-GB"] if is_youtube else ["en"]
 
-    # yt-dlp: download VTT to disk (avoids 429 on timedtext URLs during dev)
+    # 1) yt-dlp VTT file download — most reliable with cookies on cloud hosts
     try:
-        vtt = download_subtitles_vtt(
-            url, langs=["hi", "en", "en-US"] if platform in ("youtube", "youtube_shorts") else ["en"]
-        )
+        vtt = download_subtitles_vtt(url, langs=langs)
         if vtt:
             segments = _parse_vtt(vtt)
             if segments:
-                return segments
+                return segments, errors
     except Exception as e:
+        errors.append(str(e))
         logger.warning("yt-dlp VTT download failed for %s: %s", url, e)
 
-    # yt-dlp: parse subtitle URLs from info dict
+    # 2) youtube-transcript-api
+    if is_youtube:
+        try:
+            return fetch_youtube_transcript(url), errors
+        except Exception as e:
+            errors.append(str(e))
+            logger.warning("youtube-transcript-api failed for %s: %s", url, e)
+
+    # 3) yt-dlp subtitle URLs from extract_info
     try:
         with yt_dlp.YoutubeDL(metadata_opts()) as ydl:
             info = ydl.extract_info(url, download=False)
         segments = subtitles_to_segments(info)
         if segments:
-            return segments
+            return segments, errors
     except Exception as e:
+        errors.append(str(e))
         logger.warning("yt-dlp subtitle URL fallback failed for %s: %s", url, e)
 
-    # Description-only fallback for very short clips
+    # 4) Description-only fallback when yt-dlp metadata included it
     desc = (meta.get("raw") or {}).get("description") or ""
-    if desc:
+    if desc.strip():
         return [
             TranscriptSegment(
                 start_sec=0.0,
                 end_sec=min(meta.get("duration_sec") or 60.0, 60.0),
                 text=desc[:4000],
             )
-        ]
+        ], errors
 
-    return []
+    return [], errors

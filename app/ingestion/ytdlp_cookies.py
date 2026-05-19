@@ -31,7 +31,7 @@ def ensure_cookiefile() -> str | None:
         return str(_cookie_path)
 
     raw = os.environ.get("YTDLP_COOKIES", "").strip()
-    b64 = os.environ.get("YTDLP_COOKIES_B64", "").strip()
+    b64 = os.environ.get("YTDLP_COOKIES_B64", "").strip().replace("\n", "").replace(" ", "")
     if b64:
         try:
             raw = base64.b64decode(b64).decode("utf-8")
