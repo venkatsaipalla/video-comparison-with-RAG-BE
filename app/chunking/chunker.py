@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from app.models import TranscriptSegment
 
 HOOK_WINDOW_SEC = 5.0

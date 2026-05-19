@@ -1,9 +1,21 @@
+from __future__ import annotations
+
+import logging
+
 import yt_dlp
 
 from app.ingestion.detector import detect_platform, extract_youtube_id
+from app.ingestion.ytdlp_opts import metadata_opts
 from app.ingestion.youtube_transcript import fetch_youtube_transcript
-from app.ingestion.ytdlp_meta import fetch_metadata, subtitles_to_segments
+from app.ingestion.ytdlp_meta import (
+    download_subtitles_vtt,
+    fetch_metadata,
+    subtitles_to_segments,
+    _parse_vtt,
+)
 from app.models import Platform, TranscriptSegment, VideoDocument
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_video_document(url: str) -> VideoDocument:
@@ -41,16 +53,30 @@ def _fetch_transcript(
     if platform in ("youtube", "youtube_shorts"):
         try:
             return fetch_youtube_transcript(url)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("youtube-transcript-api failed for %s: %s", url, e)
 
-    # yt-dlp subtitles (TikTok, Instagram, YouTube fallback)
-    opts = {"quiet": True, "skip_download": True}
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-    segments = subtitles_to_segments(info)
-    if segments:
-        return segments
+    # yt-dlp: download VTT to disk (avoids 429 on timedtext URLs during dev)
+    try:
+        vtt = download_subtitles_vtt(
+            url, langs=["hi", "en", "en-US"] if platform in ("youtube", "youtube_shorts") else ["en"]
+        )
+        if vtt:
+            segments = _parse_vtt(vtt)
+            if segments:
+                return segments
+    except Exception as e:
+        logger.warning("yt-dlp VTT download failed for %s: %s", url, e)
+
+    # yt-dlp: parse subtitle URLs from info dict
+    try:
+        with yt_dlp.YoutubeDL(metadata_opts()) as ydl:
+            info = ydl.extract_info(url, download=False)
+        segments = subtitles_to_segments(info)
+        if segments:
+            return segments
+    except Exception as e:
+        logger.warning("yt-dlp subtitle URL fallback failed for %s: %s", url, e)
 
     # Description-only fallback for very short clips
     desc = (meta.get("raw") or {}).get("description") or ""

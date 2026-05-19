@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from uuid import UUID
 
@@ -12,6 +14,14 @@ from app.models import ChatRequest
 router = APIRouter(prefix="/sessions", tags=["chat"])
 
 
+def _sse_payload(event: dict) -> dict:
+    """sse-starlette uses str(data); dicts must be JSON strings to parse on the client."""
+    return {
+        "event": event["event"],
+        "data": json.dumps(event["data"], ensure_ascii=False),
+    }
+
+
 @router.post("/{session_id}/chat")
 async def chat(session_id: UUID, body: ChatRequest):
     pool = await get_pool()
@@ -24,14 +34,8 @@ async def chat(session_id: UUID, body: ChatRequest):
             async for event in stream_chat(
                 session_id, body.message, body.conversation_id
             ):
-                yield {
-                    "event": event["event"],
-                    "data": json.dumps(event["data"]),
-                }
+                yield _sse_payload(event)
         except Exception as e:
-            yield {
-                "event": "error",
-                "data": json.dumps({"message": str(e)}),
-            }
+            yield _sse_payload({"event": "error", "data": {"message": str(e)}})
 
     return EventSourceResponse(event_generator())

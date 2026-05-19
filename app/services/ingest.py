@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 from uuid import UUID
@@ -37,6 +39,8 @@ async def ingest_session(session_id: UUID, video_a_url: str, video_b_url: str) -
         await repo.delete_chunks_for_session(pool, session_id)
 
         ok_a = await _ingest_video(pool, session_id, video_a_id, video_a_url, "Video A")
+        # Brief pause reduces YouTube 429s when fetching captions for both videos.
+        await asyncio.sleep(3)
         ok_b = await _ingest_video(pool, session_id, video_b_id, video_b_url, "Video B")
 
         if ok_a and ok_b:

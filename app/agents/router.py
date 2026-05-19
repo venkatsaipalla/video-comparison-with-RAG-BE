@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -11,7 +13,7 @@ from app.models import Intent
 class RouteResult(TypedDict):
     intent: Intent
     hook_only: bool
-    focus_video: str | None
+    focus_video: Optional[str]
 
 
 ROUTER_PROMPT = """Classify the user question about two compared social videos.

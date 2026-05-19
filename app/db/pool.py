@@ -1,8 +1,18 @@
+from __future__ import annotations
+
 import asyncpg
 
 from app.config import settings
 
 _pool: asyncpg.Pool | None = None
+
+
+def _connect_kwargs() -> dict:
+    """Supabase requires SSL for external connections; disable statement cache for pooler."""
+    kwargs: dict = {"statement_cache_size": 0}
+    if "supabase.co" in settings.database_url:
+        kwargs["ssl"] = "require"
+    return kwargs
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -12,7 +22,7 @@ async def get_pool() -> asyncpg.Pool:
             settings.database_url,
             min_size=1,
             max_size=10,
-            statement_cache_size=0,
+            **_connect_kwargs(),
         )
     return _pool
 
