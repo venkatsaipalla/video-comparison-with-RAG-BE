@@ -15,5 +15,14 @@ GRADING = "grading"                 # JSON string from Grader
 
 # Final outputs.
 CONTEXT = "context"                 # written by Packer; consumed by Analysis
-ANALYSIS = "analysis"               # written by analysis_agent
+
+# Analysis ecosystem (transient per-turn, reset by analysis_agent before_callback).
+ANALYSIS_PLAN = "analysis_plan"             # AnalysisPlan from Router
+ANALYSIS_SUMMARY = "analysis_summary"       # SummaryBrief from Summarizer
+ANALYSIS_COMPARISON = "analysis_comparison" # ComparisonBrief from Comparator
+ANALYSIS_VIRALITY = "analysis_virality"     # ViralityBrief from Virality
+ANALYSIS_TIMELINE = "analysis_timeline"     # TimelineBrief from Timeline
+ANALYSIS_METADATA = "analysis_metadata"     # MetadataBrief from MetadataLookup
+
+ANALYSIS = "analysis"               # FinalAnalysis from deterministic Reducer; consumed by final_agent
 ANSWER = "answer"                   # written by final_agent
