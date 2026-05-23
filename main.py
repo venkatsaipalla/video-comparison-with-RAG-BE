@@ -91,3 +91,14 @@ async def chat(req: ChatRequest) -> ChatResponse:
         answer=final_text or state.get("answer", ""),
         state=state,
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.reload,
+    )
