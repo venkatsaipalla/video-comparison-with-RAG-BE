@@ -45,6 +45,38 @@ _URL_REFUSAL = (
     "start a new session through the upload flow."
 )
 
+# Fields the GPU may return on `results[]` root and/or under `metadata`.
+_INGEST_META_KEYS = (
+    "title",
+    "channel",
+    "creator",
+    "uploader",
+    "platform",
+    "thumbnail_url",
+    "thumbnail",
+    "duration",
+    "duration_sec",
+    "view_count",
+    "views",
+    "like_count",
+    "likes",
+    "comment_count",
+    "comments",
+    "upload_date",
+    "engagement",
+)
+
+
+def _normalize_ingest_metadata(result: dict[str, Any]) -> dict[str, Any]:
+    """Merge nested metadata with top-level ingest fields for the UI."""
+    md = dict(result.get("metadata") or {})
+    for key in _INGEST_META_KEYS:
+        if key not in md and result.get(key) is not None:
+            md[key] = result[key]
+    if not md.get("title") and result.get("title"):
+        md["title"] = result["title"]
+    return md
+
 
 # ---------- /init ----------
 
@@ -101,9 +133,9 @@ async def init_session(req: InitRequest) -> InitResponse:
                 detail="ingestion returned success without a video_id",
             )
         video_ids.append(vid)
-        md = r.get("metadata") or {}
+        md = _normalize_ingest_metadata(r)
         metadata[vid] = md
-        titles[vid] = md.get("title") if md else r.get("title")
+        titles[vid] = md.get("title") or r.get("title")
 
     if len(video_ids) != 2:
         raise HTTPException(
