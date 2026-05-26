@@ -14,4 +14,4 @@ def _to_async_url(url: str) -> str:
     return url
 
 # ADK persists sessions / state / events into this DB.
-session_service = DatabaseSessionService(db_url=_to_async_url(settings.DATABASE_URL))
+session_service = DatabaseSessionService(db_url=_to_async_url(settings.ADK_DATABASE_URL))

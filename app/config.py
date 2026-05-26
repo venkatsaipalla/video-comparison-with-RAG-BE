@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    DATABASE_URL: str = 'sqlite:///./gadk.db'
+    # ADK agent sessions/events (separate from any app Postgres tables)
+    ADK_DATABASE_URL: str = "sqlite:///./gadk.db"
     OPENAI_API_KEY: str
 
     MODEL_ROUTER: str = "openai/gpt-5-nano"
@@ -17,6 +18,11 @@ class Settings(BaseSettings):
     MODEL_SYNTH: str = "openai/gpt-5-mini"
 
     RETRIEVAL_BASE_URL: str = "http://localhost:9000"
+    CORS_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def reload(self) -> bool:
