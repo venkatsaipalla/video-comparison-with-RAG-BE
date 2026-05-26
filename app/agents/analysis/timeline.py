@@ -7,6 +7,13 @@ from app.config import settings
 from app.prompts.analysis_timeline import TIMELINE_INSTRUCTION
 from app.schemas import TimelineBrief
 
+_SKIP_PAYLOAD = {
+    "skipped": True,
+    "per_video_hooks": [],
+    "notable_moments": [],
+    "confidence": "low",
+}
+
 timeline_agent = LlmAgent(
     name="analysis_timeline",
     description="Timestamp / hook / retention-window specialist.",
@@ -14,7 +21,7 @@ timeline_agent = LlmAgent(
     instruction=TIMELINE_INSTRUCTION,
     output_schema=TimelineBrief,
     output_key=K.ANALYSIS_TIMELINE,
-    before_agent_callback=make_gate("timeline"),
+    before_agent_callback=make_gate("timeline", _SKIP_PAYLOAD),
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
 )

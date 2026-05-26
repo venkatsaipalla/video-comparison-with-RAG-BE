@@ -29,5 +29,7 @@ Rules:
   sufficient=false.
 - If the question is purely metadata and the metadata cache covers both
   video_ids, sufficient=true.
+- Every field is REQUIRED — no defaults, no omissions. Use an empty
+  array [] for missing_aspects when sufficient=true.
 - JSON only.
 """

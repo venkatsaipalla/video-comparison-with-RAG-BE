@@ -40,5 +40,8 @@ Rules:
 6. On retry iterations (when previous grading is present and
    sufficient=false), generate DIFFERENT queries that target the
    missing_aspects listed in the grading. Do NOT repeat earlier queries.
-7. Output JSON only.
+7. Every field is REQUIRED — no defaults, no omissions. `queries` may be
+   an empty array [] only when needs_chunks=false. `top_k` must be a
+   positive integer (use 5 as the default value, but emit the field).
+8. Output JSON only.
 """

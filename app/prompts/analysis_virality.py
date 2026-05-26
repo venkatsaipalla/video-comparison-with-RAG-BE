@@ -8,34 +8,40 @@ video_ids in session: {video_ids?}
 retrieved context (metadata + chunks): {context?}
 
 Strict rules:
-- Output STRICT JSON matching the schema. No markdown, no commentary.
-- per_video_signals: for each video_id, list 2-5 short virality signals
-  observed (e.g. "strong cold-open hook", "12% higher likes/view ratio",
-  "fast cuts in first 30s"). Be concrete; cite numbers from metadata when
-  available.
+- Output STRICT JSON. Every field is REQUIRED — no defaults, no omissions.
+- per_video_signals: list with one entry per video_id. Each entry has
+  video_id and signals (2-5 short concrete strings, citing numbers from
+  metadata when available).
 - verdict: 1-2 sentences naming which video performed better and the
   primary reason(s). If metadata is unavailable for one or both videos,
   acknowledge it.
-- evidence: 2-5 items pulled from chunks (not metadata). Each MUST include
-  quote, video_id, start_time/end_time.
+- evidence: 2-5 items pulled from chunks (NOT metadata). Each carries
+  quote, video_id, start_time, end_time. Use null for start_time/end_time
+  only if the chunk has no timestamp.
 - confidence: "high" if both metadata AND content evidence are present;
-  "medium" if only one; "low" if guessing.
+  "medium" if only one; "low" if inferred.
 - Set skipped=false. Do NOT skip.
 
 Output format — emit STRICT JSON matching this exact shape:
 {{
   "skipped": false,
-  "per_video_signals": {{
-    "<video_id_A>": [
-      "strong cold-open hook within first 5 seconds",
-      "2.3M views with 4.1% like ratio (above-average for the channel)",
-      "fast jump-cuts every 2-3 seconds in the first 30s"
-    ],
-    "<video_id_B>": [
-      "slower 25-second intro before the topic appears",
-      "780k views with 2.9% like ratio"
-    ]
-  }},
+  "per_video_signals": [
+    {{
+      "video_id": "<video_id_A>",
+      "signals": [
+        "strong cold-open hook within first 5 seconds",
+        "2.3M views with 4.1% like ratio (above-average for the channel)",
+        "fast jump-cuts every 2-3 seconds in the first 30s"
+      ]
+    }},
+    {{
+      "video_id": "<video_id_B>",
+      "signals": [
+        "slower 25-second intro before the topic appears",
+        "780k views with 2.9% like ratio"
+      ]
+    }}
+  ],
   "verdict": "video A outperformed primarily because of a tighter cold-open hook and faster pacing, supported by a stronger like ratio",
   "evidence": [
     {{
@@ -50,11 +56,9 @@ Output format — emit STRICT JSON matching this exact shape:
 
 Field rules:
 - "skipped": always false here.
-- "per_video_signals": one entry per video_id. Each value is a list of 2-5
-  short, concrete signal strings. Cite numeric metadata where available.
-- "verdict": 1-2 sentences. Name which video performed better and the
-  primary reason(s). If metadata is missing for a video, acknowledge it.
-- "evidence": 2-5 items pulled FROM CHUNKS (not metadata). Each item MUST
-  include quote, video_id, start_time, end_time.
+- "per_video_signals": list with one entry per video_id; signals is a
+  list of 2-5 short concrete strings.
+- "verdict": non-empty.
+- "evidence": 2-5 items pulled from chunks (not metadata).
 - "confidence": one of "high" | "medium" | "low".
 """

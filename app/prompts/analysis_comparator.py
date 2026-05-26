@@ -6,18 +6,19 @@ video_ids in session: {video_ids?}
 retrieved context: {context?}
 
 Strict rules:
-- Output STRICT JSON matching the schema. No markdown, no commentary.
-- similarities: 1-4 short bullets, only when actually present in chunks.
-- differences: 1-4 short bullets. This is usually the most important list.
-- verdict: one sentence answering the comparative question. If the question
-  is non-evaluative ("how do they differ"), verdict is a neutral one-line
-  summary of the key contrast.
-- evidence: 2-6 items, spanning BOTH videos where possible. Each evidence
-  item MUST include quote, video_id, and start_time/end_time from the chunk.
-- confidence: "high" if you have grounded evidence on both sides;
-  "medium" if one-sided; "low" if you had to infer.
-- If chunks are missing for one video, name it explicitly in verdict and
-  set confidence "low".
+- Output STRICT JSON. Every field is REQUIRED — no defaults, no omissions.
+  Use empty arrays/strings or null instead of skipping a field.
+- similarities: 0-4 short bullets, only when actually present in chunks.
+- differences: 1-4 short bullets — this is the most important list.
+- verdict: one sentence answering the comparative question. For
+  non-evaluative questions, a neutral one-line summary of the contrast.
+- evidence: 2-6 items spanning BOTH videos where possible. Each evidence
+  item carries quote, video_id, start_time, end_time. Use null for
+  start_time/end_time only if the chunk has no timestamp.
+- confidence: "high" with two-sided grounded evidence; "medium" if
+  one-sided; "low" if inferred.
+- If chunks are missing for one video, name it in the verdict and set
+  confidence "low".
 - Set skipped=false. Do NOT skip.
 
 Output format — emit STRICT JSON matching this exact shape:
@@ -50,11 +51,9 @@ Output format — emit STRICT JSON matching this exact shape:
 
 Field rules:
 - "skipped": always false here.
-- "similarities" / "differences": 1-4 short bullets each. Empty list allowed
-  for similarities if there are none worth noting; differences should
-  almost always have at least 1 entry.
-- "verdict": one sentence answering the comparative question.
-- "evidence": 2-6 items, ideally spanning both videos. Each item MUST
-  include quote, video_id, start_time, end_time (use 0.0 if missing).
+- "similarities" / "differences": lists of short strings. Empty list
+  allowed for similarities.
+- "verdict": non-empty single sentence.
+- "evidence": 2-6 items. start_time/end_time may be null only if absent.
 - "confidence": one of "high" | "medium" | "low".
 """

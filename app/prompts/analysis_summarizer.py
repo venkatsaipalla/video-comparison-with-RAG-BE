@@ -7,25 +7,26 @@ video_ids in session: {video_ids?}
 retrieved context: {context?}
 
 Strict rules:
-- Output STRICT JSON matching the schema. No markdown, no commentary.
-- For each video_id present in chunks_by_video, write a per_video entry.
-- summary: 1-3 sentences, focused on the user's question, not a generic
-  recap of the whole video.
-- key_points: 2-5 short bullets.
-- evidence: at least 1 and at most 4 items per video. Each evidence item
-  MUST include quote (verbatim from a chunk, can be trimmed with "..."),
-  video_id, and start_time/end_time copied from the chunk.
-- If a video has no usable chunks, give it an empty VideoSummary with
-  confidence "low".
+- Output STRICT JSON. Every field is REQUIRED — no defaults, no omissions.
+  Use empty arrays/strings/null instead of skipping a field.
+- For each video_id present in chunks_by_video, add one entry to per_video.
+  If a video has no usable chunks, still emit an entry with empty
+  summary/key_points/evidence and confidence "low".
+- summary: 1-3 sentences focused on the user's question.
+- key_points: 2-5 short bullets per video.
+- evidence: 1-4 items per video. Each evidence item carries quote,
+  video_id, start_time, end_time. Use null for start_time/end_time only
+  if the chunk has no timestamp.
 - Overall confidence: "high" if every claim has evidence; "medium" if
-  partial; "low" if you had to guess.
+  partial; "low" if missing.
 - Set skipped=false. Do NOT skip.
 
 Output format — emit STRICT JSON matching this exact shape:
 {{
   "skipped": false,
-  "per_video": {{
-    "<video_id_A>": {{
+  "per_video": [
+    {{
+      "video_id": "<video_id_A>",
       "summary": "1-3 sentence summary focused on the user's question",
       "key_points": ["short bullet 1", "short bullet 2"],
       "evidence": [
@@ -37,23 +38,20 @@ Output format — emit STRICT JSON matching this exact shape:
         }}
       ]
     }},
-    "<video_id_B>": {{
+    {{
+      "video_id": "<video_id_B>",
       "summary": "...",
       "key_points": ["..."],
-      "evidence": [
-        {{"quote": "...", "video_id": "<video_id_B>", "start_time": 0.0, "end_time": 0.0}}
-      ]
+      "evidence": []
     }}
-  }},
+  ],
   "confidence": "high"
 }}
 
 Field rules:
 - "skipped": always false here.
-- "per_video": one entry per video_id present in chunks_by_video. If a
-  video has no chunks, emit an entry with empty summary/key_points/evidence.
+- "per_video": list, one entry per video_id present in chunks_by_video.
 - "evidence[].quote": verbatim from a chunk, may end with "..." if trimmed.
-- "evidence[].start_time"/"end_time": numbers in seconds copied from the
-  chunk payload; use 0.0 if missing.
+- "evidence[].start_time"/"end_time": numbers in seconds, or null if missing.
 - "confidence": one of "high" | "medium" | "low".
 """

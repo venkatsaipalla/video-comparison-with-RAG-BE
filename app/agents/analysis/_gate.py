@@ -3,8 +3,8 @@ when its dimension was not selected by the Router.
 
 Returning a `types.Content` from before_agent_callback bypasses the LLM and
 uses the returned content as the agent's output. We return a JSON payload
-matching the specialist's output_schema with skipped=true so the Reducer
-can ignore it.
+that is schema-valid for the specialist's output_schema (with skipped=true
+and the minimum empty values for all other required fields).
 """
 import json
 import re
@@ -29,19 +29,20 @@ def _parse(raw: Any) -> dict:
         return {}
 
 
-def make_gate(dimension: str):
+def make_gate(dimension: str, skip_payload: dict):
     """Return a before_agent_callback that skips the agent when `dimension`
-    is not in the Router's selected dimensions."""
+    is not in the Router's selected dimensions. `skip_payload` must be a
+    schema-valid dict for the specialist's output_schema."""
+
+    payload_text = json.dumps(skip_payload)
 
     def _gate(callback_context: CallbackContext) -> Optional[types.Content]:
         plan = _parse(callback_context.state.get(K.ANALYSIS_PLAN))
         dims = plan.get("dimensions") or []
         if dimension in dims:
             return None  # run normally
-        # Skip: emit a schema-valid "skipped=true" payload.
-        skip_payload = json.dumps({"skipped": True})
         return types.Content(
-            role="model", parts=[types.Part(text=skip_payload)]
+            role="model", parts=[types.Part(text=payload_text)]
         )
 
     return _gate

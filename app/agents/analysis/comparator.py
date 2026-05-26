@@ -7,6 +7,15 @@ from app.config import settings
 from app.prompts.analysis_comparator import COMPARATOR_INSTRUCTION
 from app.schemas import ComparisonBrief
 
+_SKIP_PAYLOAD = {
+    "skipped": True,
+    "similarities": [],
+    "differences": [],
+    "verdict": "",
+    "evidence": [],
+    "confidence": "low",
+}
+
 comparator_agent = LlmAgent(
     name="analysis_comparator",
     description="Cross-video comparison specialist.",
@@ -14,7 +23,7 @@ comparator_agent = LlmAgent(
     instruction=COMPARATOR_INSTRUCTION,
     output_schema=ComparisonBrief,
     output_key=K.ANALYSIS_COMPARISON,
-    before_agent_callback=make_gate("comparison"),
+    before_agent_callback=make_gate("comparison", _SKIP_PAYLOAD),
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
 )

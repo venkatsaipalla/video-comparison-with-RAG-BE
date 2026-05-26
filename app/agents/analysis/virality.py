@@ -7,6 +7,14 @@ from app.config import settings
 from app.prompts.analysis_virality import VIRALITY_INSTRUCTION
 from app.schemas import ViralityBrief
 
+_SKIP_PAYLOAD = {
+    "skipped": True,
+    "per_video_signals": [],
+    "verdict": "",
+    "evidence": [],
+    "confidence": "low",
+}
+
 virality_agent = LlmAgent(
     name="analysis_virality",
     description="Performance / virality specialist using metadata + chunks.",
@@ -14,7 +22,7 @@ virality_agent = LlmAgent(
     instruction=VIRALITY_INSTRUCTION,
     output_schema=ViralityBrief,
     output_key=K.ANALYSIS_VIRALITY,
-    before_agent_callback=make_gate("virality"),
+    before_agent_callback=make_gate("virality", _SKIP_PAYLOAD),
     disallow_transfer_to_parent=True,
     disallow_transfer_to_peers=True,
 )

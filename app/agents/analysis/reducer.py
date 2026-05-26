@@ -1,10 +1,17 @@
 """Reducer — purely deterministic, NO LLM.
 
-Programmatically merges the specialist briefs (each already schema-validated
-by its specialist's output_schema) into the unified FinalAnalysis structure.
-Skipped or absent briefs become `null`. `confidence` is the lowest among
-active briefs. `grounded` is boolean logic over RAG state + evidence
-presence. `notes` is built from a small set of templated gap flags.
+Programmatically merges the specialist briefs into the unified analysis
+structure consumed by the Final synthesizer.
+
+Specialist briefs use `list[Entry]` shapes (required for OpenAI structured
+outputs strict mode). The Reducer converts those back into
+`dict[video_id, ...]` for state["analysis"] so the Final agent can do
+direct lookups by video_id.
+
+Skipped or absent briefs become `null` in the final analysis. `confidence`
+is the lowest among active briefs. `grounded` is boolean logic over the
+RAG grounding flag + presence of any evidence. `notes` is built from a
+small set of templated gap flags.
 """
 import json
 import re
@@ -33,8 +40,33 @@ def _parse(raw: Any) -> dict:
 
 
 def _is_active(brief: dict) -> bool:
-    """A brief counts only if it exists and was not skipped."""
     return bool(brief) and not brief.get("skipped", False)
+
+
+def _list_to_dict_by_video(entries: list) -> dict:
+    """Convert [{video_id, ...}, ...] -> {video_id: {...without video_id...}, ...}"""
+    out: dict = {}
+    for e in entries or []:
+        if not isinstance(e, dict):
+            continue
+        vid = e.get("video_id")
+        if not vid:
+            continue
+        out[vid] = {k: v for k, v in e.items() if k != "video_id"}
+    return out
+
+
+def _signals_list_to_dict(entries: list) -> dict:
+    """Convert [{video_id, signals[]}, ...] -> {video_id: [signals]}"""
+    out: dict = {}
+    for e in entries or []:
+        if not isinstance(e, dict):
+            continue
+        vid = e.get("video_id")
+        if not vid:
+            continue
+        out[vid] = list(e.get("signals") or [])
+    return out
 
 
 def _has_evidence(brief: dict) -> bool:
@@ -42,10 +74,12 @@ def _has_evidence(brief: dict) -> bool:
         return False
     if brief.get("evidence"):
         return True
-    per_video = brief.get("per_video") or {}
-    for v in per_video.values():
-        if isinstance(v, dict) and v.get("evidence"):
+    # per_video may be a list of entries each carrying its own evidence list
+    for entry in brief.get("per_video", []) or []:
+        if isinstance(entry, dict) and entry.get("evidence"):
             return True
+    if brief.get("notable_moments"):
+        return True
     return False
 
 
@@ -82,14 +116,32 @@ class AnalysisReducer(BaseAgent):
             if _is_active(brief):
                 dimensions_used.append(name)
 
+        # Convert list shapes to dicts keyed by video_id for the Final agent.
         per_video_summary = (
-            summary.get("per_video", {}) if _is_active(summary) else {}
+            _list_to_dict_by_video(summary.get("per_video", []))
+            if _is_active(summary) else {}
         )
+
         comparison_out = comparison if _is_active(comparison) else None
-        virality_out = virality if _is_active(virality) else None
-        timeline_out = timeline if _is_active(timeline) else None
+
+        if _is_active(virality):
+            virality_out = dict(virality)
+            virality_out["per_video_signals"] = _signals_list_to_dict(
+                virality.get("per_video_signals", [])
+            )
+        else:
+            virality_out = None
+
+        if _is_active(timeline):
+            timeline_out = dict(timeline)
+            timeline_out["per_video_hooks"] = _list_to_dict_by_video(
+                timeline.get("per_video_hooks", [])
+            )
+        else:
+            timeline_out = None
+
         metadata_view = (
-            metadata_brief.get("per_video", {})
+            _list_to_dict_by_video(metadata_brief.get("per_video", []))
             if _is_active(metadata_brief)
             else None
         )

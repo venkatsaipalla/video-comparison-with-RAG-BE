@@ -61,4 +61,7 @@ conversation history and retrieved context):
 
 Do not default to the fallback. If you can identify ANY clear signal from
 the question, pick a specific dimension set from the guidance above.
+
+Every field is REQUIRED — no defaults, no omissions. rationale_brief must
+always be a non-empty string.
 """

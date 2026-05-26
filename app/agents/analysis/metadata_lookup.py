@@ -1,9 +1,9 @@
 """MetadataLookup — deterministic specialist, NO LLM.
 
 Reads state["metadata"] (populated by the RAG retriever on demand) and
-writes the per-video metadata dict into state["analysis_metadata"]. Gated
-on the Router's plan: if "metadata" is not in dimensions, writes
-{"skipped": true}.
+emits a MetadataBrief in the list-of-entries shape used across all the
+analysis specialists. Gated on the Router's plan: if "metadata" is not
+in dimensions, writes {"skipped": true, "per_video": []}.
 """
 import json
 import re
@@ -14,6 +14,16 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
 
 from app import state_keys as K
+
+_METADATA_KEYS = (
+    "video_id",
+    "title",
+    "channel",
+    "duration",
+    "upload_date",
+    "view_count",
+    "like_count",
+)
 
 
 def _parse(raw: Any) -> dict:
@@ -38,10 +48,17 @@ class MetadataLookup(BaseAgent):
         dims = plan.get("dimensions") or []
 
         if "metadata" not in dims:
-            brief = {"skipped": True, "per_video": {}}
+            brief = {"skipped": True, "per_video": []}
         else:
             metadata = dict(state.get(K.METADATA) or {})
-            brief = {"skipped": False, "per_video": metadata}
+            entries: list[dict] = []
+            for vid, md in metadata.items():
+                if not isinstance(md, dict):
+                    continue
+                entry = {k: md.get(k) for k in _METADATA_KEYS}
+                entry["video_id"] = vid
+                entries.append(entry)
+            brief = {"skipped": False, "per_video": entries}
 
         yield Event(
             invocation_id=ctx.invocation_id,
