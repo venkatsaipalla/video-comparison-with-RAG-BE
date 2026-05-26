@@ -144,10 +144,11 @@ async def init_session(req: InitRequest) -> InitResponse:
         )
 
     # Lock video_ids into session state at creation. /chat cannot modify them.
+    # Pre-populate metadata cache from the ingest response .
     session = await session_service.create_session(
         app_name=settings.APP_NAME,
         user_id=req.user_id,
-        state={K.VIDEO_IDS: video_ids, K.METADATA: {}},
+        state={K.VIDEO_IDS: video_ids, K.METADATA: metadata},
     )
 
     bind_context(session_id=session.id)
