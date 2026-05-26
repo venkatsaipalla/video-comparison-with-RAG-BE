@@ -18,7 +18,7 @@ _SKIP_PAYLOAD = {
 virality_agent = LlmAgent(
     name="analysis_virality",
     description="Performance / virality specialist using metadata + chunks.",
-    model=LiteLlm(model=settings.MODEL_WORKER),  # T1 mini
+    model=LiteLlm(model=settings.MODEL_WORKER, reasoning_effort="low"),  # T1 mini
     instruction=VIRALITY_INSTRUCTION,
     output_schema=ViralityBrief,
     output_key=K.ANALYSIS_VIRALITY,

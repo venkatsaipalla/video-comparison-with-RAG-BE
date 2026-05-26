@@ -17,7 +17,7 @@ _SKIP_PAYLOAD = {
 timeline_agent = LlmAgent(
     name="analysis_timeline",
     description="Timestamp / hook / retention-window specialist.",
-    model=LiteLlm(model=settings.MODEL_WORKER),  # T1 mini
+    model=LiteLlm(model=settings.MODEL_WORKER, reasoning_effort="low"),  # T1 mini
     instruction=TIMELINE_INSTRUCTION,
     output_schema=TimelineBrief,
     output_key=K.ANALYSIS_TIMELINE,

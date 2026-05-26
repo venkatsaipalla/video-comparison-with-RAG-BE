@@ -19,7 +19,7 @@ _SKIP_PAYLOAD = {
 comparator_agent = LlmAgent(
     name="analysis_comparator",
     description="Cross-video comparison specialist.",
-    model=LiteLlm(model=settings.MODEL_WORKER),  # T1 mini
+    model=LiteLlm(model=settings.MODEL_WORKER, reasoning_effort="low"),  # T1 mini
     instruction=COMPARATOR_INSTRUCTION,
     output_schema=ComparisonBrief,
     output_key=K.ANALYSIS_COMPARISON,
