@@ -28,12 +28,20 @@ async def ingest_urls(urls: list[str]) -> dict:
     """POST /ingest on the retrieval (GPU) repo. Returns the raw response JSON."""
     payload = {"urls": urls}
 
+    headers = (
+        {"X-API-Key": settings.RETRIEVAL_API_KEY}
+        if settings.RETRIEVAL_API_KEY
+        else {}
+    )
+
     log.info("POST /ingest urls=%s", urls)
     t0 = time.perf_counter()
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             r = await client.post(
-                f"{settings.RETRIEVAL_BASE_URL}/ingest", json=payload
+                f"{settings.RETRIEVAL_BASE_URL}/ingest",
+                json=payload,
+                headers=headers,
             )
             r.raise_for_status()
             data = r.json()

@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.genai import types as genai_types
@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 from app import state_keys as K
 from app.agents.root_agent import root_agent
+from app.auth import require_api_key
 from app.config import settings
 from app.logger import bind_context, get_logger
 from app.services.ingest_client import ingest_urls
@@ -92,7 +93,7 @@ class InitResponse(BaseModel):
     metadata: dict[str, dict[str, Any]]
 
 
-@app.post("/init", response_model=InitResponse)
+@app.post("/init", response_model=InitResponse, dependencies=[Depends(require_api_key)])
 async def init_session(req: InitRequest) -> InitResponse:
     """The ONLY entry point that triggers ingestion. Ingests both URLs on
     the GPU repo, then creates an ADK session whose state has video_ids
@@ -186,7 +187,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_api_key)])
 async def chat(req: ChatRequest) -> ChatResponse:
     bind_context(user_id=req.user_id, session_id=req.session_id)
     msg_preview = req.message[:200].replace("\n", " ")

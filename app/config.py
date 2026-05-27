@@ -18,7 +18,12 @@ class Settings(BaseSettings):
     MODEL_SYNTH: str = "openai/gpt-5-mini"
 
     RETRIEVAL_BASE_URL: str = "http://localhost:9000"
+    # Sent as the X-API-Key header on every call to the GPU retrieval repo.
+    RETRIEVAL_API_KEY: str | None = None
     CORS_ORIGINS: str = "http://localhost:3000"
+
+    # Clients must send this value in the `X-API-Key` request header.
+    BACKEND_API_KEY: str
 
     @property
     def cors_origin_list(self) -> list[str]:

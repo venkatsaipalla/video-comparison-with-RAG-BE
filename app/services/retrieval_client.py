@@ -12,6 +12,12 @@ log = get_logger("retrieval_client")
 _TIMEOUT = httpx.Timeout(60.0, connect=10.0)
 
 
+def _headers() -> dict[str, str]:
+    if settings.RETRIEVAL_API_KEY:
+        return {"X-API-Key": settings.RETRIEVAL_API_KEY}
+    return {}
+
+
 def _preview(s: str, n: int = 120) -> str:
     s = s.strip()
     return s if len(s) <= n else s[: n - 3] + "..."
@@ -43,7 +49,9 @@ async def retrieve_chunks(
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             r = await client.post(
-                f"{settings.RETRIEVAL_BASE_URL}/retrieve", json=payload
+                f"{settings.RETRIEVAL_BASE_URL}/retrieve",
+                json=payload,
+                headers=_headers(),
             )
             r.raise_for_status()
             data = r.json()
@@ -81,7 +89,9 @@ async def retrieve_metadata(video_ids: list[str]) -> dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             r = await client.post(
-                f"{settings.RETRIEVAL_BASE_URL}/retrieve", json=payload
+                f"{settings.RETRIEVAL_BASE_URL}/retrieve",
+                json=payload,
+                headers=_headers(),
             )
             r.raise_for_status()
             data = r.json()
