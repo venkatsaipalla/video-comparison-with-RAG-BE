@@ -2,7 +2,10 @@
 cookies.txt
 .venv
 __pycache__
+cookies.txt
 *.pyc
 .pytest_cache
 .mypy_cache
 .DS_Store
+.claude
+gadk.db
