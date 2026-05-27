@@ -103,12 +103,16 @@ ADK sessions persist via `DatabaseSessionService`.
 
 ---
 
+## Deploy (Render)
+
+Use the **[Render Blueprint](render.yaml)** and follow **[DEPLOY.md](DEPLOY.md)**. Pair with Vercel for the Next.js UI and a separately hosted GPU retrieval service.
+
 ## Run
 
 ```bash
-pip install -r requirements.txt   # or: uv sync
+uv sync
 cp .env.example .env              # fill in the values below
-python main.py                    # serves on $HOST:$PORT, hot-reload when ENVIRONMENT=dev
+uv run python main.py             # serves on $HOST:$PORT, hot-reload when ENVIRONMENT=dev
 ```
 
 Key env vars:
