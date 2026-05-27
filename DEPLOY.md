@@ -4,8 +4,9 @@
 
 | Item | Status |
 |------|--------|
-| `render.yaml` blueprint | Yes |
-| `pyproject.toml` + `uv.lock` (`uv sync`) | Yes |
+| `render.yaml` blueprint | Yes (`runtime: docker`) |
+| `Dockerfile` + `uv sync` in image | Yes |
+| `pyproject.toml` + `uv.lock` | Yes |
 | `runtime.txt` → Python 3.11 | Yes |
 | Entrypoint `main:app` | Yes |
 | `GET /health` (no auth) | Yes |
@@ -24,6 +25,8 @@
 - `POST /chat` runs the full multi-agent pipeline (often **1–3+ minutes**).
 
 Use at least **Starter** plan and raise **HTTP request timeout** in the Render service settings (e.g. 300–600s). Free tier request limits are too low for `/init`.
+
+If the build fails with `open Dockerfile: no such file`, the service is set to **Docker** on Render — this repo includes `Dockerfile` at the repo root. Push latest `main` and redeploy.
 
 ## 1. Blueprint deploy
 
