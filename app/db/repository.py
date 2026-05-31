@@ -144,3 +144,17 @@ async def list_messages(
         """,
         comparison_id,
     )
+
+
+async def delete_comparison(
+    pool: asyncpg.Pool, comparison_id: UUID, user_id: UUID
+) -> bool:
+    result = await pool.execute(
+        """
+        DELETE FROM comparisons
+        WHERE id = $1 AND user_id = $2
+        """,
+        comparison_id,
+        user_id,
+    )
+    return result.endswith("1")
