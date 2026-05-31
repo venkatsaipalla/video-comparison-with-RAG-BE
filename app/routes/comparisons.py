@@ -124,3 +124,18 @@ async def get_comparison_detail(
             for m in msgs
         ],
     )
+
+
+@router.delete(
+    "/comparisons/{comparison_id}",
+    dependencies=[Depends(require_api_key)],
+)
+async def delete_comparison(
+    comparison_id: UUID,
+    user_id: UUID = Query(..., description="Owner user id from Google sign-in"),
+) -> dict[str, bool]:
+    pool = await get_pool()
+    deleted = await repo.delete_comparison(pool, comparison_id, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="comparison not found")
+    return {"ok": True}
