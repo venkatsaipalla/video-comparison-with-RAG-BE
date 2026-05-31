@@ -40,12 +40,20 @@ class RagRetriever(BaseAgent):
         metadata: dict[str, dict] = dict(state.get(K.METADATA) or {})
         video_ids: list[str] = list(state.get(K.VIDEO_IDS) or [])
 
+        # ADK session carries the authenticated user_id and the session_id;
+        # forward both to the GPU repo on every retrieve call.
+        user_id = str(ctx.session.user_id or "")
+        session_id = str(ctx.session.id or "")
+
         coros: list[tuple[str, Any]] = []
 
         if plan.get("needs_metadata"):
             missing_md = [v for v in video_ids if v not in metadata]
             if missing_md:
-                coros.append(("metadata", retrieve_metadata(missing_md)))
+                coros.append((
+                    "metadata",
+                    retrieve_metadata(missing_md, user_id=user_id, session_id=session_id),
+                ))
 
         if plan.get("needs_chunks"):
             queries = (plan.get("queries") or [])[:3]
@@ -55,7 +63,16 @@ class RagRetriever(BaseAgent):
                     continue
                 vids = q.get("video_ids") or video_ids
                 top_k = int(q.get("top_k") or 5)
-                coros.append(("chunks", retrieve_chunks(qtext, vids, top_k=top_k)))
+                coros.append((
+                    "chunks",
+                    retrieve_chunks(
+                        qtext,
+                        vids,
+                        user_id=user_id,
+                        session_id=session_id,
+                        top_k=top_k,
+                    ),
+                ))
 
         if not coros:
             yield Event(invocation_id=ctx.invocation_id, author=self.name)

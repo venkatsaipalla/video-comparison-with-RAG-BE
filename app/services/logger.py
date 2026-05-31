@@ -8,7 +8,7 @@ Timestamp format: `Mon Nov 11 14:23:45.123` (weekday + short month + day +
 HH:MM:SS.milliseconds).
 
 Usage:
-    from app.logger import bind_context, get_logger
+    from app.services.logger import bind_context, get_logger
     log = get_logger("main")            # logger name will be "app.main"
     bind_context(user_id="u1", session_id="s1")
     log.info("hello %s", "world")

@@ -10,7 +10,7 @@ import time
 import httpx
 
 from app.config import settings
-from app.logger import get_logger
+from app.services.logger import get_logger
 
 log = get_logger("ingest_client")
 
@@ -24,9 +24,13 @@ def _preview(s: str, n: int = 300) -> str:
     return s if len(s) <= n else s[: n - 3] + "..."
 
 
-async def ingest_urls(urls: list[str]) -> dict:
-    """POST /ingest on the retrieval (GPU) repo. Returns the raw response JSON."""
-    payload = {"urls": urls}
+async def ingest_urls(urls: list[str], user_id: str) -> dict:
+    """POST /ingest on the retrieval (GPU) repo. Returns the raw response JSON.
+
+    user_id is forwarded to the GPU repo so it can scope/audit ingestions
+    by user.
+    """
+    payload: dict = {"urls": urls, "user_id": user_id}
 
     headers = (
         {"X-API-Key": settings.RETRIEVAL_API_KEY}
@@ -34,7 +38,7 @@ async def ingest_urls(urls: list[str]) -> dict:
         else {}
     )
 
-    log.info("POST /ingest urls=%s", urls)
+    log.info("POST /ingest user_id=%s urls=%s", user_id, urls)
     t0 = time.perf_counter()
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:

@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
-from app.logger import get_logger
+from app.services.logger import get_logger
 
 log = get_logger("retrieval_client")
 
@@ -26,6 +26,8 @@ def _preview(s: str, n: int = 120) -> str:
 async def retrieve_chunks(
     query: str,
     video_ids: list[str],
+    user_id: str,
+    session_id: str,
     top_k: int = 5,
     candidate_k: int | None = None,
 ) -> dict[str, Any]:
@@ -33,13 +35,17 @@ async def retrieve_chunks(
         "mode": "chunks",
         "query": query,
         "video_ids": video_ids,
+        "user_id": user_id,
+        "session_id": session_id,
         "top_k": top_k,
     }
     if candidate_k is not None:
         payload["candidate_k"] = candidate_k
 
     log.info(
-        "POST /retrieve mode=chunks video_ids=%s top_k=%d candidate_k=%s query=%r",
+        "POST /retrieve mode=chunks user_id=%s session_id=%s video_ids=%s top_k=%d candidate_k=%s query=%r",
+        user_id,
+        session_id,
         video_ids,
         top_k,
         candidate_k,
@@ -81,10 +87,22 @@ async def retrieve_chunks(
     return data
 
 
-async def retrieve_metadata(video_ids: list[str]) -> dict[str, Any]:
-    payload = {"mode": "metadata", "video_ids": video_ids}
+async def retrieve_metadata(
+    video_ids: list[str], user_id: str, session_id: str
+) -> dict[str, Any]:
+    payload = {
+        "mode": "metadata",
+        "video_ids": video_ids,
+        "user_id": user_id,
+        "session_id": session_id,
+    }
 
-    log.info("POST /retrieve mode=metadata video_ids=%s", video_ids)
+    log.info(
+        "POST /retrieve mode=metadata user_id=%s session_id=%s video_ids=%s",
+        user_id,
+        session_id,
+        video_ids,
+    )
     t0 = time.perf_counter()
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:

@@ -10,7 +10,7 @@ from app.prompts.root import ROOT_INSTRUCTION
 root_agent = LlmAgent(
     name="root_agent",
     description="Entry coordinator. Classifies intent and delegates to the pipeline.",
-    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="minimal"),
+    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="low"),
     instruction=ROOT_INSTRUCTION,
     sub_agents=[pipeline_agent],
 )

@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.auth import require_api_key
+from app.services.auth import require_api_key
 from app.db import repository as repo
 from app.db.jsonb import jsonb_dict, jsonb_list, jsonb_metadata
 from app.db.pool import get_pool

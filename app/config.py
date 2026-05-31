@@ -19,9 +19,9 @@ class Settings(BaseSettings):
     # Google Sign-In (verify ID tokens from NextAuth / Google OAuth)
     GOOGLE_CLIENT_ID: str = ""
 
-    MODEL_ROUTER: str = "openai/gpt-5-nano"
-    MODEL_WORKER: str = "openai/gpt-5-mini"
-    MODEL_SYNTH: str = "openai/gpt-5-mini"
+    MODEL_ROUTER: str = "openai/gpt-5.1-nano"
+    MODEL_WORKER: str = "openai/gpt-5.1-mini"
+    MODEL_SYNTH: str = "openai/gpt-5.1-mini"
 
     RETRIEVAL_BASE_URL: str = "http://localhost:9000"
     # Sent as the X-API-Key header on every call to the GPU retrieval repo.

@@ -1,6 +1,6 @@
 # Video Comparison RAG — Brain (Cognitive Layer)
 
-A production-style **multi-agent RAG backend** that answers analytical questions about **two YouTube videos** per session (compare, summarize, virality/performance, timestamps, metadata). Built with **Google ADK 1.31.1**, **LiteLLM 1.82.6**, and **FastAPI**, using **OpenAI GPT-5** models.
+A production-style **multi-agent RAG backend** that answers analytical questions about **two YouTube videos** per session (compare, summarize, virality/performance, timestamps, metadata). Built with **Google ADK 1.31.1**, **LiteLLM 1.82.6**, and **FastAPI**, using **OpenAI GPT-5.1** models.
 
 This is one of **two repositories**:
 
@@ -74,7 +74,7 @@ All calls send the `X-API-Key` header (`RETRIEVAL_API_KEY`).
 - **Gated parallel specialists**: the Router picks ≤3 dimensions. Non-selected specialists are **short-circuited by a `before_agent_callback`** that returns a schema-valid `{"skipped": true}` payload — **the LLM is never called**, zero token cost.
 - **Deterministic agents (no LLM)**: Retriever, Packer, MetadataLookup, and the Reducer are plain `BaseAgent`s. The Reducer merges specialist briefs and computes `confidence` / `grounded` / `notes` purely in code — no LLM call to "combine JSON".
 - **Metadata pre-loaded at `/init`**: avoids a `/retrieve mode=metadata` round-trip on every metadata question.
-- **`reasoning_effort` tuned**: GPT-5 models reason before answering, which dominated latency. Set to `"minimal"` on nano agents and `"low"` on mini agents — cut end-to-end time roughly in half with no quality loss on structured paths.
+- **`reasoning_effort` tuned**: GPT-5.1 models reason before answering, which dominated latency. Set to `"minimal"` on nano agents and `"low"` on mini agents — cut end-to-end time roughly in half with no quality loss on structured paths.
 - **Self-corrective RAG** capped at `max_iterations=2`: re-plans against the Grader's `missing_aspects` instead of blindly retrying; exact-text dedup avoids re-using chunks.
 
 ---

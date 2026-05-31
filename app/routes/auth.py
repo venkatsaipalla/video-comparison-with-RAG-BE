@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.auth import require_api_key
+from app.services.auth import require_api_key
 from app.db import repository as repo
 from app.db.pool import get_pool
 from app.services.google_auth import verify_google_id_token
