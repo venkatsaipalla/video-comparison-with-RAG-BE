@@ -11,9 +11,13 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # ADK agent sessions/events (separate from any app Postgres tables)
-    ADK_DATABASE_URL: str = "sqlite:///./gadk.db"
+    # Postgres — app tables (users, comparisons, messages) + ADK tables
+    # (sessions, events, app_states, user_states, adk_internal_metadata) in the same DB.
+    DATABASE_URL: str
     OPENAI_API_KEY: str
+
+    # Google Sign-In (verify ID tokens from NextAuth / Google OAuth)
+    GOOGLE_CLIENT_ID: str = ""
 
     MODEL_ROUTER: str = "openai/gpt-5-nano"
     MODEL_WORKER: str = "openai/gpt-5-mini"

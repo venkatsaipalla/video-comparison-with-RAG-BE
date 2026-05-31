@@ -95,11 +95,14 @@ All LLM agents that emit JSON use ADK `output_schema` (Pydantic) → OpenAI **st
 
 ## Sessions / database
 
-ADK sessions persist via `DatabaseSessionService`.
+One Postgres URL (`DATABASE_URL`), two sets of tables:
 
-- Set `ADK_DATABASE_URL` to a **Supabase/Postgres** URL for persistent sessions (async driver is auto-applied).
-- If left as the default `sqlite:///./gadk.db`, it runs against a **local SQLite** file — no external DB needed.
-- (ADK also supports a fully in-memory session service for throwaway runs.)
+| Layer | Tables | Purpose |
+|---|---|---|
+| **App** (`migrations/`) | `users`, `comparisons`, `messages`, `schema_migrations` | Google sign-in, sidebar history, UI chat transcript |
+| **ADK** (`DatabaseSessionService`) | `sessions`, `events`, `app_states`, `user_states`, `adk_internal_metadata` | Agent state + full event log for multi-turn RAG |
+
+ADK creates its tables automatically on startup (asyncpg driver is applied in `app/session_service.py`).
 
 ---
 
@@ -123,7 +126,7 @@ Key env vars:
 | `BACKEND_API_KEY` | clients must send it as `X-API-Key` to `/init` and `/chat` |
 | `RETRIEVAL_API_KEY` | sent as `X-API-Key` to the GPU repo |
 | `RETRIEVAL_BASE_URL` | GPU repo base URL |
-| `ADK_DATABASE_URL` | Postgres URL, or default SQLite |
+| `DATABASE_URL` | Postgres (app + ADK tables) |
 | `MODEL_ROUTER` / `MODEL_WORKER` / `MODEL_SYNTH` | tier model IDs |
 | `ENVIRONMENT` | `dev` enables uvicorn reload |
 

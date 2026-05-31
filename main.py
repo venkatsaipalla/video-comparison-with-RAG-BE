@@ -1,5 +1,7 @@
 import re
+from contextlib import asynccontextmanager
 from typing import Any
+from uuid import UUID
 
 import httpx
 from dotenv import load_dotenv
@@ -12,16 +14,34 @@ from pydantic import BaseModel, Field, HttpUrl
 from app import state_keys as K
 from app.agents.root_agent import root_agent
 from app.auth import require_api_key
+from app.citations import citations_from_state
 from app.config import settings
+from app.db import repository as repo
+from app.db.migrate import run_migrations
+from app.db.pool import close_pool, get_pool
 from app.logger import bind_context, get_logger
+from app.routes import auth as auth_routes
+from app.routes import comparisons as comparisons_routes
 from app.services.ingest_client import ingest_urls
+from app.db.jsonb import jsonb_list, jsonb_metadata
 from app.session_service import session_service
 
 log = get_logger("main")
 
 load_dotenv()
 
-app = FastAPI(title=settings.APP_NAME)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await get_pool()
+    applied = await run_migrations()
+    if applied:
+        log.info("Migrations applied: %s", applied)
+    yield
+    await close_pool()
+
+
+app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -35,6 +55,9 @@ runner = Runner(
     agent=root_agent,
     session_service=session_service,
 )
+
+app.include_router(auth_routes.router)
+app.include_router(comparisons_routes.router)
 
 
 # Server-side guardrail: any URL in a chat message is refused before the
@@ -82,7 +105,7 @@ def _normalize_ingest_metadata(result: dict[str, Any]) -> dict[str, Any]:
 # ---------- /init ----------
 
 class InitRequest(BaseModel):
-    user_id: str
+    user_id: UUID
     urls: list[HttpUrl] = Field(..., min_length=2, max_length=2)
 
 
@@ -99,9 +122,13 @@ async def init_session(req: InitRequest) -> InitResponse:
     the GPU repo, then creates an ADK session whose state has video_ids
     locked. Returns session_id for the frontend to pass into /chat.
     """
-    bind_context(user_id=req.user_id)
+    bind_context(user_id=str(req.user_id))
     urls = [str(u) for u in req.urls]
     log.info("/init start urls=%s", urls)
+
+    pool = await get_pool()
+    if not await repo.get_user(pool, req.user_id):
+        raise HTTPException(status_code=404, detail="user not found; sign in first")
 
     try:
         resp = await ingest_urls(urls)
@@ -144,24 +171,35 @@ async def init_session(req: InitRequest) -> InitResponse:
             detail=f"expected 2 ingested videos, got {len(video_ids)}",
         )
 
-    # Lock video_ids into session state at creation. /chat cannot modify them.
-    # Pre-populate metadata cache from the ingest response .
+    comparison_id = await repo.create_comparison(
+        pool,
+        user_id=req.user_id,
+        video_a_url=urls[0],
+        video_b_url=urls[1],
+        video_ids=video_ids,
+        titles=titles,
+        metadata=metadata,
+    )
+
+    # ADK session id = comparison id (persisted in ADK `sessions` table).
     session = await session_service.create_session(
         app_name=settings.APP_NAME,
-        user_id=req.user_id,
+        user_id=str(req.user_id),
+        session_id=str(comparison_id),
         state={K.VIDEO_IDS: video_ids, K.METADATA: metadata},
     )
 
-    bind_context(session_id=session.id)
+    bind_context(session_id=str(comparison_id))
     log.info(
-        "/init done video_ids=%s titles=%s metadata_keys=%s",
+        "/init done comparison_id=%s video_ids=%s titles=%s metadata_keys=%s",
+        comparison_id,
         video_ids,
         titles,
         {vid: sorted(md.keys()) for vid, md in metadata.items()},
     )
 
     return InitResponse(
-        session_id=session.id,
+        session_id=str(comparison_id),
         video_ids=video_ids,
         titles=titles,
         metadata=metadata,
@@ -171,8 +209,8 @@ async def init_session(req: InitRequest) -> InitResponse:
 # ---------- /chat ----------
 
 class ChatRequest(BaseModel):
-    user_id: str
-    session_id: str
+    user_id: UUID
+    session_id: UUID
     message: str
 
 
@@ -189,25 +227,46 @@ async def health() -> dict[str, str]:
 
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_api_key)])
 async def chat(req: ChatRequest) -> ChatResponse:
-    bind_context(user_id=req.user_id, session_id=req.session_id)
+    bind_context(user_id=str(req.user_id), session_id=str(req.session_id))
     msg_preview = req.message[:200].replace("\n", " ")
     log.info("/chat start message_len=%d preview=%r", len(req.message), msg_preview)
+
+    pool = await get_pool()
+    comparison = await repo.get_comparison(pool, req.session_id, req.user_id)
+    if not comparison:
+        raise HTTPException(status_code=404, detail="comparison not found")
 
     # Server-side URL guardrail. Refuses without ever invoking the runner.
     if _URL_RE.search(req.message):
         log.warning("/chat blocked: URL in message")
+        await repo.insert_message(pool, req.session_id, "user", req.message)
+        await repo.insert_message(
+            pool, req.session_id, "assistant", _URL_REFUSAL, citations=[]
+        )
         return ChatResponse(
-            session_id=req.session_id,
+            session_id=str(req.session_id),
             answer=_URL_REFUSAL,
             state={},
         )
 
+    await repo.insert_message(pool, req.session_id, "user", req.message)
+
     session = await session_service.get_session(
-        app_name=settings.APP_NAME, user_id=req.user_id, session_id=req.session_id
+        app_name=settings.APP_NAME,
+        user_id=str(req.user_id),
+        session_id=str(req.session_id),
     )
     if session is None:
-        log.warning("/chat 404: session not found")
-        raise HTTPException(status_code=404, detail="session not found")
+        video_ids = [str(v) for v in jsonb_list(comparison["video_ids"])]
+        session = await session_service.create_session(
+            app_name=settings.APP_NAME,
+            user_id=str(req.user_id),
+            session_id=str(req.session_id),
+            state={
+                K.VIDEO_IDS: video_ids,
+                K.METADATA: jsonb_metadata(comparison["metadata"]),
+            },
+        )
 
     user_content = genai_types.Content(
         role="user", parts=[genai_types.Part(text=req.message)]
@@ -220,7 +279,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
     root_text = ""
     final_text = ""
     async for event in runner.run_async(
-        user_id=req.user_id,
+        user_id=str(req.user_id),
         session_id=session.id,
         new_message=user_content,
     ):
@@ -242,7 +301,9 @@ async def chat(req: ChatRequest) -> ChatResponse:
             root_text = text
 
     refreshed = await session_service.get_session(
-        app_name=settings.APP_NAME, user_id=req.user_id, session_id=session.id
+        app_name=settings.APP_NAME,
+        user_id=str(req.user_id),
+        session_id=session.id,
     )
     state = dict(refreshed.state) if refreshed else {}
 
@@ -261,8 +322,14 @@ async def chat(req: ChatRequest) -> ChatResponse:
         answer = root_text
 
     log.info("/chat done source=%s answer_len=%d", source, len(answer))
+    video_ids = [str(v) for v in jsonb_list(comparison["video_ids"])]
+    citations = citations_from_state(state, video_ids)
+    await repo.insert_message(
+        pool, req.session_id, "assistant", answer, citations=citations
+    )
+
     return ChatResponse(
-        session_id=session.id,
+        session_id=str(req.session_id),
         answer=answer,
         state=state,
     )

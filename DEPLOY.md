@@ -7,12 +7,12 @@
 | `render.yaml` blueprint | Yes (`runtime: docker`) |
 | `Dockerfile` + `uv sync` in image | Yes |
 | `pyproject.toml` + `uv.lock` | Yes |
-| `runtime.txt` → Python 3.11 | Yes |
+| `Dockerfile` → Python 3.11 | Yes |
 | Entrypoint `main:app` | Yes |
 | `GET /health` (no auth) | Yes |
 | `PORT` from Render | Yes (`Settings.PORT`) |
 | `greenlet` for ADK + SQLAlchemy async | Yes |
-| Postgres for ADK sessions | Use `ADK_DATABASE_URL` (blueprint adds Render Postgres) |
+| Postgres (app + ADK tables) | `DATABASE_URL` (blueprint adds Render Postgres) |
 
 ## Not on Render
 
@@ -32,7 +32,7 @@ If the build fails with `open Dockerfile: no such file`, the service is set to *
 
 1. Push this repo to GitHub.
 2. Render → **New** → **Blueprint** → select repo.
-3. Review `render.yaml` (web service + `adk-sessions` Postgres).
+3. Review `render.yaml` (web service + `app-db` Postgres).
 4. Set secrets when prompted:
    - `OPENAI_API_KEY`
    - `RETRIEVAL_BASE_URL` — public HTTPS URL of GPU service
@@ -62,12 +62,12 @@ The Next.js route `/api/brain/*` proxies to Render and attaches `X-API-Key`.
 | `BACKEND_API_KEY` | Yes | Clients send `X-API-Key` on `/init`, `/chat` |
 | `RETRIEVAL_BASE_URL` | Yes | GPU service base URL (no trailing slash) |
 | `RETRIEVAL_API_KEY` | Yes* | *If GPU enforces auth |
-| `ADK_DATABASE_URL` | Yes on Render | Postgres URL; blueprint wires Render DB |
+| `DATABASE_URL` | Yes on Render | Postgres URL; blueprint wires Render DB (app + ADK tables) |
 | `CORS_ORIGINS` | Yes | Comma-separated frontend origins |
 | `ENVIRONMENT` | No | `production` disables uvicorn reload |
 | `MODEL_ROUTER` / `WORKER` / `SYNTH` | No | Defaults in `render.yaml` |
 
-Do **not** use `sqlite:///./gadk.db` on Render — disk is ephemeral; sessions are lost on restart.
+Use Postgres (`DATABASE_URL`) on Render — ADK and app tables persist in the linked database.
 
 ## 4. Verify
 

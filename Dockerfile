@@ -13,6 +13,7 @@ RUN uv sync --frozen --no-dev
 
 COPY app ./app
 COPY main.py ./
+COPY migrations ./migrations
 
 EXPOSE 8000
 
