@@ -45,8 +45,8 @@ services:
           property: connectionString
       # Model tiers (LiteLLM / OpenAI)
       - key: MODEL_ROUTER
-        value: openai/gpt-5-mini
+        value: openai/gpt-5.4-mini
       - key: MODEL_WORKER
-        value: openai/gpt-5-mini
+        value: openai/gpt-5.4-mini
       - key: MODEL_SYNTH
-        value: openai/gpt-5-mini
+        value: openai/gpt-5.4-mini

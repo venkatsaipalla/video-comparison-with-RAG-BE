@@ -15,10 +15,12 @@ from app.services.logger import get_logger
 
 log = get_logger("cost")
 
-# USD per 1M tokens. Update here when OpenAI repricing happens.
+# USD per 1M tokens. Short-context Standard pricing. Update on repricing.
+# `cached_input` is the discounted rate for the portion of prompt tokens
+# that hit OpenAI's prompt cache (reported as cached_content_token_count).
 _PRICES: dict[str, dict[str, float]] = {
-    "gpt-5-nano": {"input": 0.05, "output": 0.40},
-    "gpt-5-mini": {"input": 0.25, "output": 2.00},
+    "gpt-5.4-nano": {"input": 0.20, "cached_input": 0.02, "output": 1.25},
+    "gpt-5.4-mini": {"input": 0.75, "cached_input": 0.075, "output": 4.50},
 }
 
 # author -> configured model id (matches agent definitions).
@@ -78,7 +80,14 @@ def log_event_cost(author: str, usage_metadata, totals: dict | None = None) -> N
         return
 
     price = _PRICES[key]
-    cost = (input_tokens * price["input"] + output_tokens * price["output"]) / 1_000_000
+    # OpenAI counts cached tokens INSIDE prompt_token_count, so subtract
+    # them out before applying the full input rate.
+    billable_input = max(input_tokens - cached_tokens, 0)
+    cost = (
+        billable_input * price["input"]
+        + cached_tokens * price["cached_input"]
+        + output_tokens * price["output"]
+    ) / 1_000_000
 
     log.info(
         "llm_usage author=%s model=%s input=%d output=%d cached=%d cost_usd=%.6f",

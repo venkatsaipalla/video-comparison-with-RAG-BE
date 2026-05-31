@@ -16,7 +16,7 @@ _SKIP_PAYLOAD = {
 summarizer_agent = LlmAgent(
     name="analysis_summarizer",
     description="Per-video grounded summary specialist.",
-    model=LiteLlm(model=settings.MODEL_WORKER, reasoning_effort="low"),  # T1 mini
+    model=LiteLlm(model=settings.MODEL_WORKER, reasoning_effort="low"),
     instruction=SUMMARIZER_INSTRUCTION,
     output_schema=SummaryBrief,
     output_key=K.ANALYSIS_SUMMARY,

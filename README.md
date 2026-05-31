@@ -1,6 +1,6 @@
 # Video Comparison RAG — Brain (Cognitive Layer)
 
-A production-style **multi-agent RAG backend** that answers analytical questions about **two YouTube videos** per session (compare, summarize, virality/performance, timestamps, metadata). Built with **Google ADK 1.31.1**, **LiteLLM 1.82.6**, and **FastAPI**, currently running entirely on **OpenAI `gpt-5-mini`** via LiteLLM.
+A production-style **multi-agent RAG backend** that answers analytical questions about **two YouTube videos** per session (compare, summarize, virality/performance, timestamps, metadata). Built with **Google ADK 1.31.1**, **LiteLLM 1.82.6**, and **FastAPI**, currently running entirely on **OpenAI `gpt-5.4-mini`** via LiteLLM.
 
 This is one of **two repositories**:
 
@@ -58,7 +58,7 @@ State flows through ADK session state (`output_key` per agent); downstream agent
 
 ## Models
 
-Every LLM agent in the pipeline currently uses **`gpt-5-mini`** via three LiteLLM aliases — `MODEL_ROUTER`, `MODEL_WORKER`, `MODEL_SYNTH`. The aliases are kept distinct in code so the tiers can be re-split later (e.g. nano for routing/grading) without touching any agent.
+Every LLM agent in the pipeline currently uses **`gpt-5.4-mini`** via three LiteLLM aliases — `MODEL_ROUTER`, `MODEL_WORKER`, `MODEL_SYNTH`. The aliases are kept distinct in code so the tiers can be re-split later (e.g. nano for routing/grading) without touching any agent.
 
 `reasoning_effort` is set per-role to balance cost and reliability:
 
@@ -96,10 +96,12 @@ All calls send the `X-API-Key` header (`RETRIEVAL_API_KEY`). `user_id` and `sess
 
 Every LLM event in `/chat` is priced from `event.usage_metadata` (`prompt_token_count`, `candidates_token_count`, `cached_content_token_count`) using the table in [`app/utils/cost.py`](app/utils/cost.py):
 
-| Model | input $/1M | output $/1M |
-|---|---|---|
-| `gpt-5-nano` | 0.05 | 0.40 |
-| `gpt-5-mini` | 0.25 | 2.00 |
+| Model | input $/1M | cached input $/1M | output $/1M |
+|---|---|---|---|
+| `gpt-5.4-nano` | 0.20 | 0.02 | 1.25 |
+| `gpt-5.4-mini` | 0.75 | 0.075 | 4.50 |
+
+Cached tokens (reported as `cached_content_token_count` and included inside `prompt_token_count`) are subtracted from the billable input count and priced at the cached rate — the cumulative `llm_usage_total` reflects the discount.
 
 Each turn produces N per-event lines (`llm_usage author=… input=… output=… cached=… cost_usd=…`) followed by one cumulative summary line (`llm_usage_total input=… output=… cached=… cost_usd=…`) emitted immediately before the `ChatResponse` is returned. Logging only — totals are not persisted to the DB and not surfaced in the API response.
 
@@ -190,7 +192,7 @@ Key env vars:
 | `RETRIEVAL_API_KEY` | sent as `X-API-Key` to the GPU repo |
 | `RETRIEVAL_BASE_URL` | GPU repo base URL |
 | `DATABASE_URL` | Postgres (app + ADK tables) |
-| `MODEL_ROUTER` / `MODEL_WORKER` / `MODEL_SYNTH` | tier model IDs (all default to `openai/gpt-5-mini`) |
+| `MODEL_ROUTER` / `MODEL_WORKER` / `MODEL_SYNTH` | tier model IDs (all default to `openai/gpt-5.4-mini`) |
 | `GOOGLE_CLIENT_ID` | for verifying Google sign-in ID tokens |
 | `CORS_ORIGINS` | comma-separated allowed origins |
 | `ENVIRONMENT` | `dev` enables uvicorn reload |

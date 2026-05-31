@@ -160,7 +160,6 @@ async def chat(req: ChatRequest) -> ChatResponse:
         source = "root_agent"
         answer = root_text
 
-    log.info("/chat done source=%s answer_len=%d", source, len(answer))
     video_ids = [str(v) for v in jsonb_list(comparison["video_ids"])]
     citations = citations_from_state(state, video_ids)
     await repo.insert_message(
@@ -168,6 +167,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
     )
 
     log_total_cost(cost_totals)
+    log.info("/chat done source=%s answer_len=%d", source, len(answer))
 
     return ChatResponse(
         session_id=str(req.session_id),

@@ -16,7 +16,7 @@ from app.schemas import GradingResult
 grader_agent = LlmAgent(
     name="rag_grader",
     description="Grades whether retrieved chunks suffice to answer the user's question.",
-    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="minimal"),
+    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="low"),
     instruction=GRADER_INSTRUCTION,
     output_schema=GradingResult,
     output_key=K.GRADING,
