@@ -11,6 +11,9 @@ from app.services.auth import require_api_key
 from app.db import repository as repo
 from app.db.jsonb import jsonb_dict, jsonb_list, jsonb_metadata
 from app.db.pool import get_pool
+from app.services.logger import get_logger
+
+log = get_logger("routes.comparisons")
 
 router = APIRouter(tags=["comparisons"])
 
@@ -51,10 +54,12 @@ class ComparisonDetail(BaseModel):
     dependencies=[Depends(require_api_key)],
 )
 async def list_user_comparisons(user_id: UUID) -> list[ComparisonListItem]:
+    log.info("/users/%s/comparisons start", user_id)
     pool = await get_pool()
     if not await repo.get_user(pool, user_id):
         raise HTTPException(status_code=404, detail="user not found")
     rows = await repo.list_comparisons(pool, user_id)
+    log.info("/users/%s/comparisons done sessions_found=%d", user_id, len(rows))
     return [
         ComparisonListItem(
             id=str(r["id"]),
@@ -78,6 +83,9 @@ async def get_comparison_detail(
     comparison_id: UUID,
     user_id: UUID = Query(..., description="Owner user id from Google sign-in"),
 ) -> ComparisonDetail:
+    log.info(
+        "/comparisons/%s start user_id=%s", comparison_id, user_id
+    )
     pool = await get_pool()
     row = await repo.get_comparison(pool, comparison_id, user_id)
     if not row:
@@ -87,6 +95,14 @@ async def get_comparison_detail(
     video_ids = [str(v) for v in jsonb_list(row["video_ids"])]
     titles_raw = jsonb_dict(row["titles"], video_ids=video_ids)
     titles = {k: (str(v) if v is not None else None) for k, v in titles_raw.items()}
+
+    log.info(
+        "/comparisons/%s done status=%s title=%r messages=%d",
+        comparison_id,
+        row["status"],
+        row["title"],
+        len(msgs),
+    )
 
     return ComparisonDetail(
         id=str(row["id"]),

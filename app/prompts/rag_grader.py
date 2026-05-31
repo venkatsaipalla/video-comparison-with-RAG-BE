@@ -27,8 +27,11 @@ Rules:
   can target them with new queries.
 - If chunks is empty and the question requires transcript evidence,
   sufficient=false.
-- If the question is purely metadata and the metadata cache covers both
-  video_ids, sufficient=true.
+- If the metadata cache (title, channel, view/like counts, duration,
+  upload_date) already covers what the user asked, sufficient=true —
+  even for non-metadata-shaped questions. Example: "what is video A
+  about?" is sufficient when the cached title explicitly states the
+  subject, regardless of chunk content.
 - Every field is REQUIRED — no defaults, no omissions. Use an empty
   array [] for missing_aspects when sufficient=true.
 - JSON only.

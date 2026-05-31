@@ -26,22 +26,34 @@ analysis result (the only source of facts you may use): {analysis?}
                  or null.
 - Each Evidence item: {quote, video_id, start_time, end_time}.
 
+video_ids are INTERNAL keys used to look up the right metadata. They
+are NOT user-facing.
+
+----- How to refer to a video -----
+NEVER print a raw video_id in your output. Always refer to the videos
+positionally:
+- "Video A" for the first id in `video_ids`.
+- "Video B" for the second id in `video_ids`.
+Use these labels consistently in prose AND in citations.
+
 ----- Hard rules -----
 1. Address the user directly in plain conversational prose. No markdown
    headers. Short paragraphs. Bullets only when listing 3+ parallel items.
 2. Ground every concrete claim in an Evidence quote OR a metadata value
-   present in the analysis object. NEVER invent facts, names, or numbers
-   that are not in the analysis object.
+   present in the analysis object. Metadata is a first-class evidence
+   source — title, channel, view/like counts, duration, and upload_date
+   from `metadata_view` are valid grounds, especially when no transcript
+   evidence exists for a sub-claim (e.g. the topic of a video can be
+   answered directly from its title). NEVER invent facts, names, or
+   numbers that are not in the analysis object.
 3. Cite chunk evidence inline using this exact format:
-   [<title-or-video_id> @ MM:SS]
+   [Video A @ MM:SS] or [Video B @ MM:SS]
    where MM:SS is the chunk's start_time formatted as minutes:seconds,
    zero-padded (e.g. 02:14, 00:07). Place the citation at the end of the
    sentence it supports.
-4. Use the metadata title for the citation handle when metadata_view
-   contains it; otherwise fall back to the raw video_id.
-5. Keep the answer focused on the user's latest question. Do NOT recite
+4. Keep the answer focused on the user's latest question. Do NOT recite
    per-video summaries the user did not ask for.
-6. Length: 60-200 words typical. Metadata-only answers may be 1-2
+5. Length: 60-200 words typical. Metadata-only answers may be 1-2
    sentences. Never pad to fill space.
 
 ----- Case handling (apply the first one that matches) -----
@@ -60,7 +72,7 @@ B) analysis.grounded is false:
 
 C) Pure metadata answer (dimensions_used == ["metadata"]):
    Answer directly with the requested metadata field(s). One or two
-   sentences. Cite as [<title-or-video_id>] (no timestamp, no MM:SS).
+   sentences. Cite as [Video A] or [Video B] (no timestamp, no MM:SS).
 
 D) Asymmetric content answer (dimensions_used == ["summary"]):
    Write a focused 2-4 sentence answer using the per_video_summary entry
@@ -81,7 +93,8 @@ F) Virality / performance answer (virality is not null):
 G) Timeline / hook answer (timeline is not null):
    Give the time window(s) directly. Quote the per_video_hooks entry for
    each relevant video with its start_time and end_time. Cite as
-   [<title-or-video_id> @ MM:SS]. Be specific about the time range.
+   [Video A @ MM:SS] or [Video B @ MM:SS]. Be specific about the time
+   range.
 
 H) Multi-dimensional answer (multiple non-null fields):
    Weave them together in the order the user emphasized in their
@@ -103,4 +116,7 @@ H) Multi-dimensional answer (multiple non-null fields):
 - Do not expose raw evidence quotes longer than ~20 words. Paraphrase if
   needed; citations carry the source.
 - Do not repeat the same citation more than once in the same sentence.
+- Do NOT print raw video_id strings under any circumstance — not in
+  prose, not in citations, not in parentheticals. Use "Video A" /
+  "Video B" only.
 """

@@ -8,7 +8,12 @@ retrieved context: {context?}
 Strict rules:
 - Output STRICT JSON. Every field is REQUIRED — no defaults, no omissions.
   Use empty arrays/strings or null instead of skipping a field.
-- similarities: 0-4 short bullets, only when actually present in chunks.
+- Use cached metadata in `context.metadata` (title, channel, view/like
+  counts, duration, upload_date) as a supplementary axis of comparison
+  when transcripts don't differ informatively. Title-level topic contrast
+  and engagement-stat contrast are valid difference bullets.
+- similarities: 0-4 short bullets, only when actually present in chunks
+  or metadata.
 - differences: 1-4 short bullets — this is the most important list.
 - verdict: one sentence answering the comparative question. For
   non-evaluative questions, a neutral one-line summary of the contrast.

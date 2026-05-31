@@ -12,6 +12,11 @@ Strict rules:
 - For each video_id present in chunks_by_video, add one entry to per_video.
   If a video has no usable chunks, still emit an entry with empty
   summary/key_points/evidence and confidence "low".
+- Use the cached metadata in `context.metadata` (title, channel, etc.) as
+  a supplementary source when transcript chunks are sparse or silent on
+  the asked topic. The title in particular often states the subject
+  directly. Lead with metadata-based observations when chunks add no
+  information.
 - summary: 1-3 sentences focused on the user's question.
 - key_points: 2-5 short bullets per video.
 - evidence: 1-4 items per video. Each evidence item carries quote,

@@ -12,7 +12,7 @@ from app.prompts.final import FINAL_INSTRUCTION
 final_agent = LlmAgent(
     name="final_agent",
     description="Synthesizes the user-facing answer from the unified analysis result.",
-    model=LiteLlm(model=settings.MODEL_SYNTH, reasoning_effort="low"),  # T1 mini (gpt-5.1-mini)
+    model=LiteLlm(model=settings.MODEL_SYNTH, reasoning_effort="low"),
     instruction=FINAL_INSTRUCTION,
     output_key=K.ANSWER,
 )

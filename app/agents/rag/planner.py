@@ -9,7 +9,7 @@ from app.schemas import RetrievalPlan
 planner_agent = LlmAgent(
     name="rag_planner",
     description="Rewrites the user query and plans 1-3 retrieval calls (chunks and/or metadata).",
-    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="minimal"),  # T0 nano
+    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="medium"),
     instruction=PLANNER_INSTRUCTION,
     output_schema=RetrievalPlan,
     output_key=K.RETRIEVAL_PLAN,

@@ -35,8 +35,13 @@ Rules:
 4. needs_metadata=true ONLY if the user explicitly asks about title,
    channel, views, likes, upload date, or duration — AND that video_id is
    not already present in the metadata cache above.
-5. needs_chunks=false ONLY when the question can be answered purely from
-   metadata (e.g. "which one has more views"). Otherwise true.
+5. needs_chunks=false when the question can be answered purely from
+   metadata. This includes not only stats questions ("which has more
+   views/likes/engagement") but also subject/topic questions whose
+   answer is already in the cached title or channel (e.g. "what is the
+   first video about" when its title is "Understanding Fragment
+   Shaders"). When in doubt and chunks might add nuance, keep
+   needs_chunks=true — the analysis stage will still see metadata.
 6. On retry iterations (when previous grading is present and
    sufficient=false), generate DIFFERENT queries that target the
    missing_aspects listed in the grading. Do NOT repeat earlier queries.

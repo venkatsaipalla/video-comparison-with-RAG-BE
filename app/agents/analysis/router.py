@@ -9,7 +9,7 @@ from app.schemas import AnalysisPlan
 router_agent = LlmAgent(
     name="analysis_router",
     description="Picks up to 3 analysis dimensions to run.",
-    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="minimal"),  # T0 nano
+    model=LiteLlm(model=settings.MODEL_ROUTER, reasoning_effort="low"),
     instruction=ROUTER_INSTRUCTION,
     output_schema=AnalysisPlan,
     output_key=K.ANALYSIS_PLAN,

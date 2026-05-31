@@ -50,8 +50,18 @@ Dimension selection guidance (apply the FIRST rule that matches):
 - Metadata + content combined ("which has more views and why")
     -> ["metadata","virality"] or ["metadata","comparison"]
 
-Never mix "metadata" with content dimensions unless the user explicitly
-asks for metadata fields.
+Include "metadata" ALONGSIDE content dimensions whenever the answer could
+be informed by the video's title, channel, view/like counts, duration, or
+upload date — even if the user did not name a metadata field. Examples:
+- "what is video A about?" → ["summary","metadata"]  (the title alone may
+   answer it if the transcript is sparse)
+- "which one is more popular?" / "...better engagement?" → ["metadata"]
+   or ["metadata","virality"] depending on whether the user wants WHY.
+- Topic / subject / audience / genre questions → add "metadata" so the
+   title and channel can corroborate the transcript.
+Only OMIT "metadata" when the question is purely about in-transcript
+content with no plausible link to title/channel/stats (e.g. "what does
+he say at 2:30?").
 
 LAST-RESORT FALLBACK — use ONLY when the question is genuinely ambiguous
 (one-word messages, off-topic, no clear intent even after considering

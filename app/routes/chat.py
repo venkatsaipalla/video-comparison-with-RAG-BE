@@ -24,7 +24,7 @@ from app.services.auth import require_api_key
 from app.services.logger import bind_context, get_logger
 from app.services.session_service import session_service
 from app.utils.citations import citations_from_state
-from app.utils.cost import log_event_cost
+from app.utils.cost import log_event_cost, log_total_cost, new_totals
 
 log = get_logger("routes.chat")
 
@@ -114,6 +114,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
     # briefs — we must NOT surface those.
     root_text = ""
     final_text = ""
+    cost_totals = new_totals()
     async for event in runner.run_async(
         user_id=str(req.user_id),
         session_id=session.id,
@@ -124,7 +125,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         if not (event.content and event.content.parts):
             continue
         if event.usage_metadata is not None:
-            log_event_cost(event.author, event.usage_metadata)
+            log_event_cost(event.author, event.usage_metadata, totals=cost_totals)
         text = "".join(p.text or "" for p in event.content.parts)
         snippet = text[:200].replace("\n", " ")
         log.info(
@@ -165,6 +166,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
     await repo.insert_message(
         pool, req.session_id, "assistant", answer, citations=citations
     )
+
+    log_total_cost(cost_totals)
 
     return ChatResponse(
         session_id=str(req.session_id),

@@ -17,13 +17,13 @@ log = get_logger("cost")
 
 # USD per 1M tokens. Update here when OpenAI repricing happens.
 _PRICES: dict[str, dict[str, float]] = {
-    "gpt-5.1-nano": {"input": 0.05, "output": 0.40},
-    "gpt-5.1-mini": {"input": 0.25, "output": 2.00},
+    "gpt-5-nano": {"input": 0.05, "output": 0.40},
+    "gpt-5-mini": {"input": 0.25, "output": 2.00},
 }
 
 # author -> configured model id (matches agent definitions).
 _AUTHOR_MODEL: dict[str, str] = {
-    "root_agent": settings.MODEL_ROUTER,
+    "root_agent": settings.MODEL_WORKER,
     "rag_planner": settings.MODEL_ROUTER,
     "rag_grader": settings.MODEL_ROUTER,
     "analysis_router": settings.MODEL_ROUTER,
@@ -36,7 +36,7 @@ _AUTHOR_MODEL: dict[str, str] = {
 
 
 def _price_key(model_id: str) -> str | None:
-    """Map a LiteLLM-style id (e.g. 'openai/gpt-5.1-nano') to a _PRICES key."""
+    """Map a LiteLLM-style id to a _PRICES key."""
     if not model_id:
         return None
     tail = model_id.split("/")[-1].lower()
@@ -46,8 +46,17 @@ def _price_key(model_id: str) -> str | None:
     return None
 
 
-def log_event_cost(author: str, usage_metadata) -> None:
-    """Log token usage + USD cost for one LLM event. Safe to call with None."""
+def new_totals() -> dict:
+    """Fresh cumulative-cost accumulator for a single /chat turn."""
+    return {"input": 0, "output": 0, "cached": 0, "cost_usd": 0.0}
+
+
+def log_event_cost(author: str, usage_metadata, totals: dict | None = None) -> None:
+    """Log token usage + USD cost for one LLM event. Safe to call with None.
+
+    If `totals` is provided, accumulates this event's numbers into it in place
+    so the caller can log a cumulative summary at end of turn.
+    """
     if usage_metadata is None:
         return
 
@@ -62,6 +71,10 @@ def log_event_cost(author: str, usage_metadata) -> None:
             "llm_usage author=%s model=%s input=%d output=%d cached=%d cost=unknown",
             author, model_id or "?", input_tokens, output_tokens, cached_tokens,
         )
+        if totals is not None:
+            totals["input"] += input_tokens
+            totals["output"] += output_tokens
+            totals["cached"] += cached_tokens
         return
 
     price = _PRICES[key]
@@ -70,4 +83,21 @@ def log_event_cost(author: str, usage_metadata) -> None:
     log.info(
         "llm_usage author=%s model=%s input=%d output=%d cached=%d cost_usd=%.6f",
         author, key, input_tokens, output_tokens, cached_tokens, cost,
+    )
+
+    if totals is not None:
+        totals["input"] += input_tokens
+        totals["output"] += output_tokens
+        totals["cached"] += cached_tokens
+        totals["cost_usd"] += cost
+
+
+def log_total_cost(totals: dict) -> None:
+    """Log the cumulative token + USD totals for a /chat turn."""
+    log.info(
+        "llm_usage_total input=%d output=%d cached=%d cost_usd=%.6f",
+        totals.get("input", 0),
+        totals.get("output", 0),
+        totals.get("cached", 0),
+        totals.get("cost_usd", 0.0),
     )
